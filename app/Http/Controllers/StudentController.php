@@ -4,82 +4,104 @@ namespace App\Http\Controllers;
 
 use App\Models\Student;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\File;
 
 class StudentController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
     public function index()
     {
-        //
+        $students = Student::latest()->paginate(5);
+        return view('students.index', compact('students'))
+            ->with('i', (request()->input('page', 1) - 1) * 5);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
     public function create()
     {
-        //
+        return view('students.create');
     }
 
-    /**
-     * Store a newly created resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
-     */
     public function store(Request $request)
     {
-        //
+        $this->validate($request, [
+            'fullname' => 'required',
+            'class' => 'required',
+            'course' => 'required',
+            'email' => 'required',
+            'address' => 'required',
+            'image' => 'required',
+        ]);
+
+        $image = $request->file('image');
+        $name = time() . '.' . $image->getClientOriginalExtension();
+        $destinationPath = public_path('/uploads/students');
+        $image->move($destinationPath, $name);
+
+        Student::create([
+            'fullname' => $request->get('fullname'),
+            'class' => $request->get('class'),
+            'course' => $request->get('course'),
+            'email' => $request->get('email'),
+            'address' => $request->get('address'),
+            'image' => $name
+        ]);
+
+        return redirect()->route('students.index')
+            ->with('success', 'Student created successfully.');
     }
 
-    /**
-     * Display the specified resource.
-     *
-     * @param  \App\Models\Student  $student
-     * @return \Illuminate\Http\Response
-     */
-    public function show(Student $student)
+    public function show($id)
     {
-        //
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     *
-     * @param  \App\Models\Student  $student
-     * @return \Illuminate\Http\Response
-     */
-    public function edit(Student $student)
+    public function edit($id)
     {
-        //
+        $student = Student::find($id);
+        return view('students.edit', compact('student'));
     }
 
-    /**
-     * Update the specified resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Models\Student  $student
-     * @return \Illuminate\Http\Response
-     */
-    public function update(Request $request, Student $student)
+    public function update(Request $request, $id)
     {
-        //
+        $this->validate($request, [
+            'fullname' => 'required',
+            'class' => 'required',
+            'course' => 'required',
+            'email' => 'required',
+            'address' => 'required',
+            'image' => 'required',
+        ]);
+
+        $student = Student::find($id);
+        $name = $student->image;
+
+        if ($request->hasfile('image')) {
+            $image = $request->file('image');
+            $name = time() . '.' . $image->getClientOriginalExtension();
+            $destinationPath = public_path('/uploads/students');
+            $image->move($destinationPath, $name);
+        }
+
+        $student->fullname = $request->get('fullname');
+        $student->class = $request->get('class');
+        $student->course = $request->get('course');
+        $student->email = $request->get('email');
+        $student->address = $request->get('address');
+        $student->image = $name;
+
+        $student->save();
+
+        return redirect()->route('students.index')
+            ->with('success', 'Student updated successfully.');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     *
-     * @param  \App\Models\Student  $student
-     * @return \Illuminate\Http\Response
-     */
-    public function destroy(Student $student)
+    public function destroy($id)
     {
-        //
+        $student = Student::find($id);
+
+        File::delete('public/uploads/students' . $student->image);
+
+        $student->delete();
+
+        return redirect()->route('students.index')
+            ->with('success', 'Student deleted successfully.');
     }
 }
